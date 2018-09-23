@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"unicode"
 )
 
 func DownloadImage(imageURL string) ([]byte, error) {
@@ -39,7 +40,7 @@ func (p page) getPageImageURL() string {
 
 // extension detection (jpg/png)
 func getImageExtension(imageURL string) string {
-	if imageURL[len(imageURL)-3] == 'j' || imageURL[len(imageURL)-3] == 'J' {
+	if unicode.ToLower(rune(imageURL[len(imageURL)-3])) == 'j' {
 		return ".jpg"
 	}
 	return ".png"

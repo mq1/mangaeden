@@ -1,41 +1,32 @@
 package mangaeden
 
 import (
-	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
+	"regexp"
 )
 
-// XMLSearchResult is the search result parsed from the html search results page
-type XMLSearchResult struct {
-	Title string `xml:",chardata"`
-	Class string `xml:"class,attr"`
-	Link  string `xml:"href,attr"`
+type SearchResult struct {
+	Title string
+	Class string
+	Link  string
 }
 
-type xmlSearchResults struct {
-	XMLName       xml.Name          `xml:"tbody"`
-	SearchResults []XMLSearchResult `xml:"tr>td>a"`
-}
-
-func (x *xmlSearchResults) getSearchResults() []XMLSearchResult {
-	var searchResults []XMLSearchResult
-	for _, result := range x.SearchResults {
-		// the link could be of a single chapter (it doesn't have a class)
-		if result.Class != "" {
-			searchResults = append(searchResults, result)
-		}
+func newSearchResult(match []string) SearchResult {
+	return SearchResult{
+		Title: match[3],
+		Class: match[2],
+		Link:  match[1],
 	}
-
-	return searchResults
 }
 
 // SearchManga searches a manga using the mangaeden search engine
-func SearchManga(title, language string) ([]XMLSearchResult, error) {
+func SearchManga(title, language string) ([]SearchResult, error) {
+	pattern := regexp.MustCompile(`<a href="([^"]*)" class="(.*Manga)">([^<]*)<\/a>`)
+
 	// use the mangaeden search engine
-	resp, err := http.Get(fmt.Sprintf("https://www.mangaeden.com/%s/%s-directory/?title=%s", language, language, title))
+	resp, err := http.Get(fmt.Sprintf("https://www.mangaeden.com/en/%s-directory/?title=%s", language, title))
 	if err != nil {
 		return nil, err
 	}
@@ -46,20 +37,11 @@ func SearchManga(title, language string) ([]XMLSearchResult, error) {
 		return nil, err
 	}
 
-	// extract the results table from the html body
-	bodyString := string(body)
-	tbodyStartPosition := strings.Index(bodyString, "<tbody>")
-	tbodyEndPosition := strings.Index(bodyString, "</tbody>")
-	toParse := bodyString[tbodyStartPosition:tbodyEndPosition] + "</tbody>"
+	var searchResults []SearchResult
 
-	// parse the data
-	var rawSearchResults xmlSearchResults
-	if err := xml.Unmarshal([]byte(toParse), &rawSearchResults); err != nil {
-		return nil, err
+	for _, match := range pattern.FindAllStringSubmatch(string(body), -1) {
+		searchResults = append(searchResults, newSearchResult(match))
 	}
-
-	// get only the relevant links
-	searchResults := rawSearchResults.getSearchResults()
 
 	return searchResults, nil
 }

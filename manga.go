@@ -5,7 +5,7 @@ import (
 	"html"
 	"io/ioutil"
 	"net/http"
-	"strings"
+	"regexp"
 )
 
 type rawChapterInfo []interface{}
@@ -67,7 +67,10 @@ func newMangaInfo(raw rawMangaInfo, mangaID string) MangaInfo {
 	}
 }
 
+// GetMangaID gets the page from a link like "/en/en-manga/soul-eater/" and extracts the manga's ID
 func GetMangaID(mangaURL string) (string, error) {
+	pattern := regexp.MustCompile(`window\.manga_id2 = "([^"]*)"`)
+
 	resp, err := http.Get("https://www.mangaeden.com" + mangaURL)
 	if err != nil {
 		return "", err
@@ -79,16 +82,7 @@ func GetMangaID(mangaURL string) (string, error) {
 		return "", err
 	}
 
-	bodyString := string(body)
-	mangaIDStartPosition := strings.Index(bodyString, "window.manga_id2")
-	trimmedBodyString := strings.Replace(bodyString, `window.manga_id2 = "`, "", 1)[mangaIDStartPosition:]
-
-	var mangaID strings.Builder
-	for i := 0; trimmedBodyString[i] != '"'; i++ {
-		mangaID.WriteByte(trimmedBodyString[i])
-	}
-
-	return mangaID.String(), nil
+	return pattern.FindStringSubmatch(string(body))[1], nil
 }
 
 // GetMangaInfo downloads the manga info corresponding to the id and returns a MangaInfo struct
