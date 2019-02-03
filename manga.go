@@ -15,10 +15,16 @@ func (c rawChapterInfo) getNumber() float64 {
 }
 
 func (c rawChapterInfo) getTitle() string {
+	if c[2] == nil {
+		return ""
+	}
 	return c[2].(string)
 }
 
 func (c rawChapterInfo) getID() string {
+	if c[3] == nil {
+		return ""
+	}
 	return c[3].(string)
 }
 
